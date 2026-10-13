@@ -1,0 +1,23 @@
+name: Self-hosted checks
+
+on:
+  pull_request:
+  push:
+    branches: [selfhosted]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:selfhost
+      - name: Build the self-hosted server and run the end-to-end check
+        run: |
+          NITRO_PRESET=node-server npm run build
+          npm run test:selfhost:e2e

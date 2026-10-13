@@ -10,33 +10,154 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SelfhostRouteImport } from './routes/selfhost'
+import { Route as ApiCatalogRouteImport } from './routes/api/catalog'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiInterruptRouteImport } from './routes/api/interrupt'
+import { Route as ApiOfferRouteImport } from './routes/api/offer'
+import { Route as ApiStatusRouteImport } from './routes/api/status'
+import { Route as ApiStopRouteImport } from './routes/api/stop'
+import { Route as ApiTurnRouteImport } from './routes/api/turn'
+import { Route as ApiAvatarPreviewIdRouteImport } from './routes/api/avatar-preview/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SelfhostRoute = SelfhostRouteImport.update({
+  id: '/selfhost',
+  path: '/selfhost',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCatalogRoute = ApiCatalogRouteImport.update({
+  id: '/api/catalog',
+  path: '/api/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInterruptRoute = ApiInterruptRouteImport.update({
+  id: '/api/interrupt',
+  path: '/api/interrupt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferRoute = ApiOfferRouteImport.update({
+  id: '/api/offer',
+  path: '/api/offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatusRoute = ApiStatusRouteImport.update({
+  id: '/api/status',
+  path: '/api/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStopRoute = ApiStopRouteImport.update({
+  id: '/api/stop',
+  path: '/api/stop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTurnRoute = ApiTurnRouteImport.update({
+  id: '/api/turn',
+  path: '/api/turn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAvatarPreviewIdRoute = ApiAvatarPreviewIdRouteImport.update({
+  id: '/api/avatar-preview/$id',
+  path: '/api/avatar-preview/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/selfhost': typeof SelfhostRoute
+  '/api/catalog': typeof ApiCatalogRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/interrupt': typeof ApiInterruptRoute
+  '/api/offer': typeof ApiOfferRoute
+  '/api/status': typeof ApiStatusRoute
+  '/api/stop': typeof ApiStopRoute
+  '/api/turn': typeof ApiTurnRoute
+  '/api/avatar-preview/$id': typeof ApiAvatarPreviewIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/selfhost': typeof SelfhostRoute
+  '/api/catalog': typeof ApiCatalogRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/interrupt': typeof ApiInterruptRoute
+  '/api/offer': typeof ApiOfferRoute
+  '/api/status': typeof ApiStatusRoute
+  '/api/stop': typeof ApiStopRoute
+  '/api/turn': typeof ApiTurnRoute
+  '/api/avatar-preview/$id': typeof ApiAvatarPreviewIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/selfhost': typeof SelfhostRoute
+  '/api/catalog': typeof ApiCatalogRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/interrupt': typeof ApiInterruptRoute
+  '/api/offer': typeof ApiOfferRoute
+  '/api/status': typeof ApiStatusRoute
+  '/api/stop': typeof ApiStopRoute
+  '/api/turn': typeof ApiTurnRoute
+  '/api/avatar-preview/$id': typeof ApiAvatarPreviewIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/selfhost'
+    | '/api/catalog'
+    | '/api/health'
+    | '/api/interrupt'
+    | '/api/offer'
+    | '/api/status'
+    | '/api/stop'
+    | '/api/turn'
+    | '/api/avatar-preview/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/selfhost'
+    | '/api/catalog'
+    | '/api/health'
+    | '/api/interrupt'
+    | '/api/offer'
+    | '/api/status'
+    | '/api/stop'
+    | '/api/turn'
+    | '/api/avatar-preview/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/selfhost'
+    | '/api/catalog'
+    | '/api/health'
+    | '/api/interrupt'
+    | '/api/offer'
+    | '/api/status'
+    | '/api/stop'
+    | '/api/turn'
+    | '/api/avatar-preview/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SelfhostRoute: typeof SelfhostRoute
+  ApiCatalogRoute: typeof ApiCatalogRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiInterruptRoute: typeof ApiInterruptRoute
+  ApiOfferRoute: typeof ApiOfferRoute
+  ApiStatusRoute: typeof ApiStatusRoute
+  ApiStopRoute: typeof ApiStopRoute
+  ApiTurnRoute: typeof ApiTurnRoute
+  ApiAvatarPreviewIdRoute: typeof ApiAvatarPreviewIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +169,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/selfhost': {
+      id: '/selfhost'
+      path: '/selfhost'
+      fullPath: '/selfhost'
+      preLoaderRoute: typeof SelfhostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/catalog': {
+      id: '/api/catalog'
+      path: '/api/catalog'
+      fullPath: '/api/catalog'
+      preLoaderRoute: typeof ApiCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/interrupt': {
+      id: '/api/interrupt'
+      path: '/api/interrupt'
+      fullPath: '/api/interrupt'
+      preLoaderRoute: typeof ApiInterruptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offer': {
+      id: '/api/offer'
+      path: '/api/offer'
+      fullPath: '/api/offer'
+      preLoaderRoute: typeof ApiOfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/status': {
+      id: '/api/status'
+      path: '/api/status'
+      fullPath: '/api/status'
+      preLoaderRoute: typeof ApiStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stop': {
+      id: '/api/stop'
+      path: '/api/stop'
+      fullPath: '/api/stop'
+      preLoaderRoute: typeof ApiStopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/turn': {
+      id: '/api/turn'
+      path: '/api/turn'
+      fullPath: '/api/turn'
+      preLoaderRoute: typeof ApiTurnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/avatar-preview/$id': {
+      id: '/api/avatar-preview/$id'
+      path: '/api/avatar-preview/$id'
+      fullPath: '/api/avatar-preview/$id'
+      preLoaderRoute: typeof ApiAvatarPreviewIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SelfhostRoute: SelfhostRoute,
+  ApiCatalogRoute: ApiCatalogRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiInterruptRoute: ApiInterruptRoute,
+  ApiOfferRoute: ApiOfferRoute,
+  ApiStatusRoute: ApiStatusRoute,
+  ApiStopRoute: ApiStopRoute,
+  ApiTurnRoute: ApiTurnRoute,
+  ApiAvatarPreviewIdRoute: ApiAvatarPreviewIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

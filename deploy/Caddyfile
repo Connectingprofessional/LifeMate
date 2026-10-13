@@ -1,0 +1,6 @@
+{$DOMAIN} {
+	reverse_proxy 127.0.0.1:3000 {
+		# Replies stream back line by line while the avatar is talking.
+		flush_interval -1
+	}
+}

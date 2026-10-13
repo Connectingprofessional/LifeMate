@@ -1,0 +1,7 @@
+node_modules
+.output
+.vercel
+.git
+deploy/livetalking/models
+deploy/livetalking/data
+screenshots

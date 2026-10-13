@@ -1,0 +1,102 @@
+# LifeMate, self-hosted: avatar video, speech-to-text, language model and voice
+# all run on this one GPU machine. Nothing here calls an outside AI service.
+#
+#   cp .env.example .env   # then edit it
+#   docker compose up -d --build
+#
+# Everything except Ollama's/Whisper's/Kokoro's own ports uses the host network
+# because WebRTC (the avatar video) needs a wide UDP port range.
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+  # ── language model (OpenAI-compatible API on :11434/v1) ──────────────────
+  ollama:
+    image: ollama/ollama:latest
+    <<: *gpu
+    ports: ["127.0.0.1:11434:11434"]
+    volumes: ["ollama:/root/.ollama"]
+    restart: unless-stopped
+
+  # ── speech-to-text: Whisper via speaches (OpenAI-compatible, :8000/v1) ───
+  stt:
+    image: ${STT_IMAGE:-ghcr.io/speaches-ai/speaches:latest-cuda}
+    <<: *gpu
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["hf-cache:/home/ubuntu/.cache/huggingface/hub"]
+    restart: unless-stopped
+
+  # ── voice: Kokoro (OpenAI-compatible, :8880/v1) ──────────────────────────
+  tts:
+    image: ${TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-gpu:latest}
+    <<: *gpu
+    ports: ["127.0.0.1:8880:8880"]
+    restart: unless-stopped
+
+  # ── avatar video: LiveTalking (WebRTC on :8010) ──────────────────────────
+  livetalking:
+    build:
+      context: ./livetalking
+      args:
+        LIVETALKING_REF: ${LIVETALKING_REF:-main}
+    <<: *gpu
+    network_mode: host
+    command:
+      - python
+      - app.py
+      - --transport=webrtc
+      - --model=${AVATAR_MODEL:-wav2lip}
+      - --avatar_id=${DEFAULT_AVATAR:-wav2lip256_avatar1}
+      - --stun=
+      - --max_session=${MAX_SESSIONS:-20}
+      - --listenport=8010
+    volumes:
+      - ./livetalking/models:/app/models:ro
+      - ./livetalking/data/avatars:/app/data/avatars
+    restart: unless-stopped
+
+  # ── the LifeMate screen and the conversation logic ───────────────────────
+  lifemate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.lifemate
+    network_mode: host
+    environment:
+      PORT: "3000"
+      HOST: "127.0.0.1"
+      LIVETALKING_URL: http://127.0.0.1:8010
+      LLM_BASE_URL: http://127.0.0.1:11434/v1
+      LLM_MODEL: ${LLM_MODEL:-qwen3:8b}
+      STT_BASE_URL: http://127.0.0.1:8000/v1
+      STT_MODEL: ${STT_MODEL:-Systran/faster-whisper-large-v3}
+      TTS_BASE_URL: http://127.0.0.1:8880/v1
+      AVATARS_DIR: /data/avatars
+      ICE_SERVERS_JSON: ${ICE_SERVERS_JSON:-}
+    volumes:
+      - ./livetalking/data/avatars:/data/avatars:ro
+    depends_on: [ollama, stt, tts, livetalking]
+    restart: unless-stopped
+
+  # ── HTTPS in front (browsers only allow the microphone on https) ─────────
+  caddy:
+    image: caddy:2
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [lifemate]
+    restart: unless-stopped
+
+volumes:
+  ollama:
+  hf-cache:
+  caddy-data:
