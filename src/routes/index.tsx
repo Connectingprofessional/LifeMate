@@ -49,6 +49,7 @@ function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const roomRef = useRef<{ disconnect: () => void } | null>(null);
   const sidRef = useRef("");
+  const videoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
@@ -99,7 +100,17 @@ function Home() {
     document.querySelectorAll("audio[data-live-audio]").forEach((el) => el.remove());
   }
 
-  async function end(auto = false) {
+  function clearVideoTimer() {
+    if (videoTimerRef.current) {
+      clearTimeout(videoTimerRef.current);
+      videoTimerRef.current = null;
+    }
+  }
+
+  // `message` lets the caller say why the call ended; without it the status
+  // would be overwritten with a generic "Ended." and the real error lost.
+  async function end(auto = false, message?: string) {
+    clearVideoTimer();
     const room = roomRef.current;
     roomRef.current = null;
     try {
@@ -117,7 +128,7 @@ function Home() {
     setLive(false);
     setHasVideo(false);
     setMuted(false);
-    setStatus(auto ? "Session ended. Sandbox calls last about a minute." : "Ended.");
+    setStatus(message ?? (auto ? "The call ended." : "Ended."));
   }
 
   async function start() {
@@ -142,6 +153,7 @@ function Home() {
       sidRef.current = session.session_id;
       room.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Video && videoRef.current) {
+          clearVideoTimer();
           track.attach(videoRef.current);
           setHasVideo(true);
           setStatus(
@@ -156,16 +168,40 @@ function Home() {
         }
       });
       room.on(RoomEvent.Disconnected, () => {
-        void end(true);
+        void end(
+          true,
+          session.sandbox
+            ? "The call ended. Sandbox calls last about a minute."
+            : "The call ended.",
+        );
       });
       await room.connect(session.livekit_url, session.token);
-      await room.startAudio();
-      await room.localParticipant.setMicrophoneEnabled(true);
       setLive(true);
       setStatus("Connected. Waiting for the avatar’s video… then just talk.");
+      // If the avatar never publishes video, say so instead of waiting forever.
+      videoTimerRef.current = setTimeout(() => {
+        void end(
+          false,
+          "Connected, but the avatar's video never arrived. Check the LiveAvatar account (credits, plan) and try again.",
+        );
+      }, 25000);
+      // Audio playback and the microphone are best-effort: the avatar's video
+      // should still show if the browser blocks either one.
+      let note = "";
+      try {
+        await room.startAudio();
+      } catch {
+        note = " Your browser blocked audio playback — click the page once to allow sound.";
+      }
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true);
+      } catch {
+        note += " Microphone unavailable — allow it in the browser to talk to the avatar.";
+      }
+      // Only while still waiting for video; otherwise keep the "on a call" status.
+      if (note && videoTimerRef.current) setStatus("Connected." + note);
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Could not start.");
-      await end(false);
+      await end(false, e instanceof Error ? e.message : "Could not start the call.");
     } finally {
       setBusy(null);
     }
@@ -236,7 +272,7 @@ function Home() {
 
           <Field label="Avatar">
             <select value={avatarId} onChange={(e) => setAvatarId(e.target.value)} className={fieldClass}>
-              <option value="">Avatar: default</option>
+              <option value="">Select an avatar…</option>
               {avatars.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name || a.id}

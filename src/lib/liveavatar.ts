@@ -85,41 +85,52 @@ type StartInput = {
 const GUIDE_NAME = "LifeMate Guide";
 const GUIDE_PROMPT = `You are LifeMate, a live video guide on a two-way call. Speak only in \${language_name}. The person opened the call wanting help with: \${topic}. Follow that, and also follow them if they change subject — work, personal life, spirituality, music, business, markets, research, study, or finding a job. Listen, answer in short spoken turns, and ask one useful follow-up. Be warm and direct. You are not a doctor, lawyer, or licensed financial adviser: for health, legal, or money decisions give general context and tell them to confirm with a qualified person. Never invent live prices, private facts, or breaking news.`;
 
-async function guideContextId() {
+const GUIDE_OPENING = "Hello. I can see you are here. What would you like to talk through?";
+
+// The guide context never changes per request, so look it up once per server
+// instance instead of listing + patching it on every call (that added two
+// sequential API round-trips to every session start and let concurrent calls
+// overwrite each other's context). A failed lookup is not cached.
+let guideIdPromise: Promise<string> | null = null;
+
+async function resolveGuideContextId(): Promise<string> {
   const listed = await fetch(API + "/contexts?page_size=100", { headers: { "X-API-KEY": apiKey() } })
     .then((r) => r.json())
     .catch(() => ({}));
   const found = (results(listed as Record<string, unknown>) as { id?: string; name?: string }[]).find(
     (c) => c.name === GUIDE_NAME && c.id,
   );
-  if (found?.id) {
-    await la("/contexts/" + found.id, {
-      method: "PATCH",
-      body: JSON.stringify({
-        name: GUIDE_NAME,
-        prompt: GUIDE_PROMPT,
-        opening_text: "Hello. I can see you are here. What would you like to talk through?",
-      }),
-    }).catch(() => undefined);
-    return found.id;
-  }
+  if (found?.id) return found.id;
   const created = await la("/contexts", {
     method: "POST",
-    body: JSON.stringify({
-      name: GUIDE_NAME,
-      prompt: GUIDE_PROMPT,
-      opening_text: "Hello. I can see you are here. What would you like to talk through?",
-    }),
+    body: JSON.stringify({ name: GUIDE_NAME, prompt: GUIDE_PROMPT, opening_text: GUIDE_OPENING }),
   });
   const id = (created.data as { id?: string } | undefined)?.id;
   if (!id) throw new Error("Could not prepare the avatar's conversation guide");
   return id;
 }
 
+function guideContextId(): Promise<string> {
+  if (!guideIdPromise) {
+    guideIdPromise = resolveGuideContextId().catch((e) => {
+      guideIdPromise = null;
+      throw e;
+    });
+  }
+  return guideIdPromise;
+}
+
+// LiveAvatar's sandbox only allows the Wayne avatar and ends sessions after
+// about a minute. It is opt-in (LIVEAVATAR_SANDBOX=true) and never used as a
+// silent fallback, so a production failure is reported instead of hidden.
+const SANDBOX_AVATAR_ID = "dd73ea75-1218-4ef3-92ce-606d5f7fbc0a";
+
 export const startSession = createServerFn({ method: "POST" })
   .validator((data: StartInput) => data)
   .handler(async ({ data }) => {
     if (!data.avatar_id) throw new Error("Pick an avatar before starting the video call.");
+    const sandbox = process.env.LIVEAVATAR_SANDBOX === "true";
+    const avatar_id = sandbox ? SANDBOX_AVATAR_ID : data.avatar_id;
     const context_id = await guideContextId();
     const persona: Record<string, string> = {
       language: data.language || "en",
@@ -128,7 +139,7 @@ export const startSession = createServerFn({ method: "POST" })
     if (data.voice_id) persona.voice_id = data.voice_id;
     const body = {
       mode: "FULL",
-      avatar_id: data.avatar_id,
+      avatar_id,
       interactivity_type: "CONVERSATIONAL",
       video_settings: { quality: "high", encoding: "H264" },
       avatar_persona: persona,
@@ -137,19 +148,18 @@ export const startSession = createServerFn({ method: "POST" })
         topic: (data.topic || "anything they bring up").slice(0, 900),
       },
     };
-    let sandbox = false;
     let tokenRes: Record<string, unknown>;
     try {
       tokenRes = await la("/sessions/token", {
         method: "POST",
-        body: JSON.stringify({ ...body, is_sandbox: false }),
+        body: JSON.stringify({ ...body, is_sandbox: sandbox }),
       });
-    } catch {
-      sandbox = true;
-      tokenRes = await la("/sessions/token", {
-        method: "POST",
-        body: JSON.stringify({ ...body, is_sandbox: true }),
-      });
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "unknown error";
+      console.error("[liveavatar] session token request failed:", reason);
+      throw new Error(
+        `LiveAvatar refused to create the session: ${reason}. Check the account's credits and plan, and that this avatar is available to the API key.`,
+      );
     }
     const tokenData = tokenRes.data as { session_token?: string; session_id?: string };
     if (!tokenData?.session_token) throw new Error("LiveAvatar did not return a session token");
@@ -162,7 +172,8 @@ export const startSession = createServerFn({ method: "POST" })
       message?: string;
     };
     if (!start.ok || !sj.data?.livekit_url || !sj.data.livekit_client_token) {
-      throw new Error(sj.message || "Could not start the LiveAvatar session");
+      console.error("[liveavatar] session start failed:", start.status, sj.message);
+      throw new Error(sj.message || `Could not start the LiveAvatar session (HTTP ${start.status})`);
     }
     return {
       session_id: tokenData.session_id || "",
