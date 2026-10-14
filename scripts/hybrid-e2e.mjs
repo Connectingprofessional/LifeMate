@@ -17,7 +17,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 300)));
-let geminiFrames = 0, geminiAudioFrames = 0, geminiBytes = 0;
+let endEnabled = false; let geminiFrames = 0, geminiAudioFrames = 0, geminiBytes = 0;
 page.on("websocket", (ws) => {
   if (!ws.url().includes("generativelanguage.googleapis.com")) return;
   step("gemini websocket opened");
@@ -26,7 +26,7 @@ page.on("websocket", (ws) => {
   ws.on("framereceived", (f) => {
     geminiFrames++;
     const s = typeof f.payload === "string" ? f.payload : f.payload.toString("utf8");
-    if (!s.includes("inlineData")) step("gemini frame", { head: s.replace(/"data":"[^"]{40,}"/g, '"data":"..."').slice(0, 300) });
+    if (!s.includes("inlineData") && s.length > 6) step("gemini frame", { head: s.replace(/"data":"[^"]{40,}"/g, '"data":"..."').slice(0, 300) });
     if (s.includes("inlineData")) { geminiAudioFrames++; geminiBytes += s.length; }
   });
 });
@@ -68,11 +68,15 @@ try {
   step("gemini traffic", { geminiFrames, geminiAudioFrames, approxAudioChars: geminiBytes });
 
   const endBtn = page.getByRole("button", { name: /End/ });
-  await endBtn.click();
-  await page.waitForTimeout(1000);
-  step("ended", { status: await page.locator("p.min-h-5").innerText() });
+  endEnabled = await endBtn.isEnabled();
+  step("after greeting", { callStillLive: endEnabled, status: await page.locator("p.min-h-5").innerText() });
+  if (endEnabled) {
+    await endBtn.click();
+    await page.waitForTimeout(1000);
+    step("ended", { status: await page.locator("p.min-h-5").innerText() });
+  }
 
-  report.ok = Boolean(canvas && canvas.w > 100 && geminiAudioFrames > 0);
+  report.ok = Boolean(canvas && canvas.w > 100 && geminiAudioFrames > 0 && endEnabled);
 } catch (e) {
   step("error", { message: String(e.message || e).slice(0, 400) });
   await page.screenshot({ path: "ci-results/hybrid-error.png" }).catch(() => {});
