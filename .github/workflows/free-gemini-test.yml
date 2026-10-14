@@ -1,0 +1,29 @@
+name: Test free Gemini call
+
+on:
+  push:
+    branches: [free-gemini]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # The Gemini key lives in this environment's secrets.
+    environment: chatgpt-free-gemini
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Live Gemini test (token, connect, spoken audio)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/free-gemini-live-test.mjs

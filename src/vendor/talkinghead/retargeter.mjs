@@ -1,3 +1,4 @@
+// @ts-nocheck -- vendored third-party JavaScript (MIT); not type-checked by LifeMate
 import * as THREE from 'three';
 
 // Constants

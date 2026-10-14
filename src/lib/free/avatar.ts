@@ -58,8 +58,9 @@ export async function createAvatarStage(
     // Audio-driven mouth shapes (HeadAudio, MIT). It listens to what the avatar is
     // about to say, so it works in any language and needs no transcript timing.
     try {
-      const [{ HeadAudio }, ] = await Promise.all([
-        import(/* @vite-ignore */ "/vendor/headaudio/headaudio.min.mjs") as Promise<{
+      const moduleUrl: string = "/vendor/headaudio/headaudio.min.mjs";
+      const [{ HeadAudio }] = await Promise.all([
+        import(/* @vite-ignore */ moduleUrl) as Promise<{
           HeadAudio: new (ctx: AudioContext, opts: object) => HeadAudioNode;
         }>,
         head.audioCtx.audioWorklet.addModule("/vendor/headaudio/headworklet.min.mjs"),

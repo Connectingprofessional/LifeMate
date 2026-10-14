@@ -1,3 +1,4 @@
+// @ts-nocheck -- vendored third-party JavaScript (MIT)
 class PlaybackWorklet extends AudioWorkletProcessor {
   static FSM = {
     IDLE: 0,
