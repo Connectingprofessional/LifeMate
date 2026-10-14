@@ -51,7 +51,7 @@ export const Route = createFileRoute("/api/free-token")({
         }
         const voice = input.voice && VOICE_IDS.has(input.voice) ? input.voice : "Kore";
         const topic = TOPICS.includes(input.topic ?? "") ? (input.topic as string) : "Anything";
-        const named = (input.languageName ?? "").replace(/[^\p{L} \-]/gu, "").trim().slice(0, 40);
+        const named = (input.languageName ?? "").replace(/[^\p{L} -]/gu, "").trim().slice(0, 40);
         const language = named || languageLabel(input.language ?? "en");
 
         const config = {
