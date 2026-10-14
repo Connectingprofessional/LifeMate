@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as FreeGeminiRouteImport } from './routes/free-gemini'
 import { Route as IndexRouteImport } from './routes/index'
 
 const FreeGeminiRoute = FreeGeminiRouteImport.update({
@@ -46,6 +47,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FreeGeminiRoute: typeof FreeGeminiRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -69,6 +71,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FreeGeminiRoute: FreeGeminiRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
