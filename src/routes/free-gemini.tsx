@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { FreeGeminiAvatar, AVATARS } from "@/lib/free-gemini-avatar";
 import { startGeminiSession } from "@/lib/free-gemini";
+import "@/styles.free-gemini.css";
 
 const VOICES = [
   ["Zephyr", "Bright"], ["Puck", "Upbeat"], ["Charon", "Informative"], ["Kore", "Firm"],
