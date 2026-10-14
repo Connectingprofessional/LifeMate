@@ -1,0 +1,70 @@
+name: Deploy chatgpt-free-gemini to GitHub Pages
+
+on:
+  push:
+    branches:
+      - chatgpt-free-gemini
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages-chatgpt-free-gemini
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: chatgpt-free-gemini
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_AUTH_ENABLED: "true"
+          GITHUB_PAGES: "true"
+
+      - name: Locate static output
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d ".output/public" ]; then
+            echo "PAGES_OUTPUT=.output/public" >> "$GITHUB_ENV"
+          elif [ -d "dist" ]; then
+            echo "PAGES_OUTPUT=dist" >> "$GITHUB_ENV"
+          else
+            echo "No static output directory was produced."
+            find . -maxdepth 3 -type d \( -name public -o -name dist \) -print
+            exit 1
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.PAGES_OUTPUT }}
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
