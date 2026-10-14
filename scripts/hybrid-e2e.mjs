@@ -21,9 +21,12 @@ let geminiFrames = 0, geminiAudioFrames = 0, geminiBytes = 0;
 page.on("websocket", (ws) => {
   if (!ws.url().includes("generativelanguage.googleapis.com")) return;
   step("gemini websocket opened");
+  ws.on("close", () => step("gemini websocket closed"));
+  ws.on("socketerror", (e) => step("gemini websocket error", { e: String(e).slice(0, 200) }));
   ws.on("framereceived", (f) => {
     geminiFrames++;
     const s = typeof f.payload === "string" ? f.payload : f.payload.toString("utf8");
+    if (!s.includes("inlineData")) step("gemini frame", { head: s.replace(/"data":"[^"]{40,}"/g, '"data":"..."').slice(0, 300) });
     if (s.includes("inlineData")) { geminiAudioFrames++; geminiBytes += s.length; }
   });
 });
