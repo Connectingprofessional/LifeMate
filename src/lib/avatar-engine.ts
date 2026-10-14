@@ -141,7 +141,8 @@ function drawAvatar(
 
 export async function startAvatarEngine(options: AvatarEngineOptions): Promise<AvatarEngineSession> {
   if (typeof document === "undefined") throw new Error("Avatar rendering requires a browser.");
-  if (!options.video) throw new Error("The avatar video surface is unavailable.");
+  if (!options.video) throw new Error("The video surface is unavailable.");
+  if (!("RTCPeerConnection" in window)) throw new Error("This browser does not support WebRTC.");
 
   const canvas = document.createElement("canvas");
   canvas.width = 720;
@@ -161,14 +162,56 @@ export async function startAvatarEngine(options: AvatarEngineOptions): Promise<A
     drawAvatar(ctx, canvas.width, canvas.height, options.avatarId, state);
     animationFrame = requestAnimationFrame(render);
   };
-
   render();
 
-  const stream = canvas.captureStream(30);
-  options.video.srcObject = stream;
-  await options.video.play().catch(() => undefined);
+  // Native WebRTC replaces the former LiveKit media transport. The two peer
+  // connections are the local room's publisher/subscriber: the avatar publishes
+  // its MediaStream and the LifeMate call surface subscribes to it.
+  const publisher = new RTCPeerConnection();
+  const subscriber = new RTCPeerConnection();
 
-  const sessionId = `local-avatar-${hash(options.avatarId).toString(16)}-${Date.now().toString(36)}`;
+  publisher.onicecandidate = (event) => {
+    if (event.candidate) void subscriber.addIceCandidate(event.candidate).catch(() => undefined);
+  };
+  subscriber.onicecandidate = (event) => {
+    if (event.candidate) void publisher.addIceCandidate(event.candidate).catch(() => undefined);
+  };
+
+  const stream = canvas.captureStream(30);
+  for (const track of stream.getTracks()) publisher.addTrack(track, stream);
+
+  const subscribed = new Promise<void>((resolve) => {
+    subscriber.ontrack = (event) => {
+      if (!event.streams[0]) return;
+      options.video.srcObject = event.streams[0];
+      void options.video.play().catch(() => undefined);
+      resolve();
+    };
+  });
+
+  const offer = await publisher.createOffer();
+  await publisher.setLocalDescription(offer);
+  await waitForIce(publisher);
+  if (!publisher.localDescription?.sdp) {
+    publisher.close();
+    subscriber.close();
+    throw new Error("The WebRTC publisher could not create an offer.");
+  }
+
+  await subscriber.setRemoteDescription(publisher.localDescription);
+  const answer = await subscriber.createAnswer();
+  await subscriber.setLocalDescription(answer);
+  await waitForIce(subscriber);
+  if (!subscriber.localDescription?.sdp) {
+    publisher.close();
+    subscriber.close();
+    throw new Error("The WebRTC subscriber could not create an answer.");
+  }
+
+  await publisher.setRemoteDescription(subscriber.localDescription);
+  await subscribed;
+
+  const sessionId = `webrtc-room-${hash(options.avatarId).toString(16)}-${Date.now().toString(36)}`;
 
   const interrupt = async () => {
     state.speaking = false;
@@ -183,6 +226,8 @@ export async function startAvatarEngine(options: AvatarEngineOptions): Promise<A
     await interrupt();
     cancelAnimationFrame(animationFrame);
     stream.getTracks().forEach((track) => track.stop());
+    publisher.close();
+    subscriber.close();
     options.video.srcObject = null;
   };
 
@@ -222,4 +267,15 @@ export async function startAvatarEngine(options: AvatarEngineOptions): Promise<A
   };
 
   return { sessionId, video: options.video, close, speak, interrupt };
+}
+
+function waitForIce(pc: RTCPeerConnection): Promise<void> {
+  if (pc.iceGatheringState === "complete") return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => {
+      pc.removeEventListener("icegatheringstatechange", done);
+      resolve();
+    };
+    pc.addEventListener("icegatheringstatechange", done);
+  });
 }
