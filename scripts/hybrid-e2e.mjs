@@ -32,7 +32,8 @@ page.on("websocket", (ws) => {
 await page.route("**/_serverFn/**", async (route) => {
   const body = route.request().postData() || "";
   if (route.request().method() === "POST" && body.includes("avatar_id") && body.includes("topic")) {
-    return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "LiveAvatar refused to create the session: insufficient credits (simulated)" }) });
+    // A dropped request makes startSession() reject, which is what the page sees when HeyGen refuses.
+    return route.abort("failed");
   }
   return route.continue();
 });
