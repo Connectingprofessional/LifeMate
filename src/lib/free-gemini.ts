@@ -1,3 +1,5 @@
+export type GeminiSession = { close: () => void; setMicrophoneEnabled: (enabled: boolean) => Promise<void> };
+
 export type GeminiSessionOptions = {
   voice: string;
   language: string;
@@ -197,7 +199,7 @@ function stopPlayback(engine: AudioEngine) {
   engine.nextPlayTime = engine.context.currentTime;
 }
 
-export async function startGeminiSession(options: GeminiSessionOptions) {
+export async function startGeminiSession(options: GeminiSessionOptions): Promise<GeminiSession> {
   const tokenResponse = await fetch("/api/gemini-token", { method: "POST" });
   const tokenData = (await tokenResponse.json()) as {
     token?: string;
@@ -219,6 +221,11 @@ export async function startGeminiSession(options: GeminiSessionOptions) {
   const socket = new WebSocket(wsUrl);
   let audio: AudioEngine | null = null;
   let closed = false;
+
+  const setMicrophoneEnabled = async (enabled: boolean) => {
+    if (!audio) return;
+    audio.inputStream.getAudioTracks().forEach((track) => { track.enabled = enabled; });
+  };
 
   const close = () => {
     if (closed) return;
@@ -342,5 +349,5 @@ export async function startGeminiSession(options: GeminiSessionOptions) {
   });
 
   await ready;
-  return { close };
+  return { close, setMicrophoneEnabled };
 }
