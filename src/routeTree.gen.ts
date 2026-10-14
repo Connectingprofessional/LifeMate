@@ -11,6 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 
+const FreeGeminiRoute = FreeGeminiRouteImport.update({
+  id: '/free-gemini',
+  path: '/free-gemini',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,20 +25,23 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/free-gemini': typeof FreeGeminiRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/free-gemini': typeof FreeGeminiRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/free-gemini': typeof FreeGeminiRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/free-gemini'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/free-gemini'
+  id: '__root__' | '/' | '/free-gemini'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -46,6 +55,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/free-gemini': {
+      id: '/free-gemini'
+      path: '/free-gemini'
+      fullPath: '/free-gemini'
+      preLoaderRoute: typeof FreeGeminiRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
