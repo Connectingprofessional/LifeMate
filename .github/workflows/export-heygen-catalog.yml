@@ -1,0 +1,28 @@
+name: Export HeyGen catalog
+
+on:
+  push:
+    branches: [heygen-catalog-export]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Export avatar and voice lists
+        env:
+          LIVEAVATAR_API_KEY: ${{ secrets.LIVEAVATAR_API_KEY }}
+        run: node scripts/export-heygen-catalog.mjs
+      - name: Commit the snapshot
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add catalog/heygen-catalog.json
+          git diff --cached --quiet || git commit -m "Add HeyGen catalog snapshot (metadata only) [skip ci]"
+          git push
