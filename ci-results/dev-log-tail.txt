@@ -1,0 +1,29 @@
+
+> dev
+> node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080
+
+
+  [32m[1mVITE[22m v8.3.4[39m  [2mready in [0m[1m769[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m8080[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://10.1.0.121:[1m8080[22m/[39m  [2meth0[22m
+[2m9:56:00 AM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m connected.
+[2m9:56:04 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mdependencies optimized: [33m@tanstack/router-core, @tanstack/router-core/isServer, @tanstack/router-core/ssr/client, seroval[32m[39m
+[2m9:56:05 AM[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [33mwarning: 
+[36m/home/runner/work/LifeMate/LifeMate/src/vendor/talkinghead/talkinghead.mjs[33m
+[0m2817 |        const moduleName = path + 'lipsync-' + lang.toLowerCase() + '.mjs';
+2818 |        const className = 'Lipsync' + lang.charAt(0).toUpperCase() + lang.slice(1);
+2819 |        import(moduleName).then( module => {
+     |               ^^^^^^^^^^
+2820 |          this.lipsync[lang] = new module[className];
+2821 |        });[0m[33m
+The above dynamic import cannot be analyzed by Vite.
+See [34mhttps://vite.dev/guide/features#dynamic-import[33m for supported dynamic import formats. If this is intended to be left as-is, you can use the /* @vite-ignore */ comment inside the import() call to suppress this warning.
+[33m[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/runner/work/LifeMate/LifeMate/src/vendor/talkinghead/talkinghead.mjs[39m
+[2m9:56:24 AM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to load url /vendor/headaudio/headaudio.min.mjs (resolved id: /vendor/headaudio/headaudio.min.mjs). This file is in /public and will be copied as-is during build without going through the plugin transforms, and therefore should not be imported from source code. It can only be referenced via HTML tags.[39m
+      at loadAndTransform (file:///home/runner/work/LifeMate/LifeMate/node_modules/vite/dist/node/chunks/node.js:20173:31)
+[2m9:56:27 AM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to load url /vendor/headaudio/headaudio.min.mjs (resolved id: /vendor/headaudio/headaudio.min.mjs). This file is in /public and will be copied as-is during build without going through the plugin transforms, and therefore should not be imported from source code. It can only be referenced via HTML tags.[39m
+      at loadAndTransform (file:///home/runner/work/LifeMate/LifeMate/node_modules/vite/dist/node/chunks/node.js:20173:31)
+      at async viteTransformMiddleware (file:///home/runner/work/LifeMate/LifeMate/node_modules/vite/dist/node/chunks/node.js:20404:20)

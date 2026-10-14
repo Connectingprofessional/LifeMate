@@ -1,0 +1,62 @@
+{
+  "steps": [
+    {
+      "name": "real HeyGen catalog loaded",
+      "avatarOptions": 101
+    },
+    {
+      "name": "gemini websocket opened"
+    },
+    {
+      "name": "gemini frame",
+      "head": "{\n  \"setupComplete\": {}\n}\n"
+    },
+    {
+      "name": "gemini frame",
+      "head": "{\n  \"sessionResumptionUpdate\": {\n    \"newHandle\": \"71820447-ad54-4326-86bc-62ce16e99b6e\",\n    \"resumable\": true\n  }\n}\n"
+    },
+    {
+      "name": "gemini frame",
+      "head": "{\n  \"serverContent\": {}\n}\n"
+    },
+    {
+      "name": "status after start",
+      "status": "Free call (Gemini). Speak naturally. The avatar listens and answers."
+    },
+    {
+      "name": "gemini frame",
+      "head": "{\n  \"serverContent\": {\n    \"generationComplete\": true\n  }\n}\n"
+    },
+    {
+      "name": "gemini frame",
+      "head": "{\n  \"serverContent\": {\n    \"turnComplete\": true\n  },\n  \"usageMetadata\": {\n    \"promptTokenCount\": 710,\n    \"responseTokenCount\": 177,\n    \"totalTokenCount\": 887,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 463\n      },\n      {\n        \"modality\": \"AUDIO\",\n "
+    },
+    {
+      "name": "avatar canvas",
+      "canvas": {
+        "w": 491,
+        "h": 491
+      }
+    },
+    {
+      "name": "gemini traffic",
+      "geminiFrames": 50,
+      "geminiAudioFrames": 22,
+      "approxAudioChars": 445258
+    },
+    {
+      "name": "after greeting",
+      "callStillLive": true,
+      "status": "Free call (Gemini). Speak naturally. The avatar listens and answers."
+    },
+    {
+      "name": "gemini websocket closed"
+    },
+    {
+      "name": "ended",
+      "status": "Ended."
+    }
+  ],
+  "ok": true,
+  "pageErrors": []
+}
