@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FreeRouteImport } from './routes/free'
 import { Route as SelfhostRouteImport } from './routes/selfhost'
 import { Route as ApiCatalogRouteImport } from './routes/api/catalog'
+import { Route as ApiFreeTokenRouteImport } from './routes/api/free-token'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiInterruptRouteImport } from './routes/api/interrupt'
 import { Route as ApiOfferRouteImport } from './routes/api/offer'
@@ -25,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FreeRoute = FreeRouteImport.update({
+  id: '/free',
+  path: '/free',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SelfhostRoute = SelfhostRouteImport.update({
   id: '/selfhost',
   path: '/selfhost',
@@ -33,6 +40,11 @@ const SelfhostRoute = SelfhostRouteImport.update({
 const ApiCatalogRoute = ApiCatalogRouteImport.update({
   id: '/api/catalog',
   path: '/api/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFreeTokenRoute = ApiFreeTokenRouteImport.update({
+  id: '/api/free-token',
+  path: '/api/free-token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -73,8 +85,10 @@ const ApiAvatarPreviewIdRoute = ApiAvatarPreviewIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/free': typeof FreeRoute
   '/selfhost': typeof SelfhostRoute
   '/api/catalog': typeof ApiCatalogRoute
+  '/api/free-token': typeof ApiFreeTokenRoute
   '/api/health': typeof ApiHealthRoute
   '/api/interrupt': typeof ApiInterruptRoute
   '/api/offer': typeof ApiOfferRoute
@@ -85,8 +99,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/free': typeof FreeRoute
   '/selfhost': typeof SelfhostRoute
   '/api/catalog': typeof ApiCatalogRoute
+  '/api/free-token': typeof ApiFreeTokenRoute
   '/api/health': typeof ApiHealthRoute
   '/api/interrupt': typeof ApiInterruptRoute
   '/api/offer': typeof ApiOfferRoute
@@ -98,8 +114,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/free': typeof FreeRoute
   '/selfhost': typeof SelfhostRoute
   '/api/catalog': typeof ApiCatalogRoute
+  '/api/free-token': typeof ApiFreeTokenRoute
   '/api/health': typeof ApiHealthRoute
   '/api/interrupt': typeof ApiInterruptRoute
   '/api/offer': typeof ApiOfferRoute
@@ -112,8 +130,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/free'
     | '/selfhost'
     | '/api/catalog'
+    | '/api/free-token'
     | '/api/health'
     | '/api/interrupt'
     | '/api/offer'
@@ -124,8 +144,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/free'
     | '/selfhost'
     | '/api/catalog'
+    | '/api/free-token'
     | '/api/health'
     | '/api/interrupt'
     | '/api/offer'
@@ -136,8 +158,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/free'
     | '/selfhost'
     | '/api/catalog'
+    | '/api/free-token'
     | '/api/health'
     | '/api/interrupt'
     | '/api/offer'
@@ -149,8 +173,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FreeRoute: typeof FreeRoute
   SelfhostRoute: typeof SelfhostRoute
   ApiCatalogRoute: typeof ApiCatalogRoute
+  ApiFreeTokenRoute: typeof ApiFreeTokenRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiInterruptRoute: typeof ApiInterruptRoute
   ApiOfferRoute: typeof ApiOfferRoute
@@ -169,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/free': {
+      id: '/free'
+      path: '/free'
+      fullPath: '/free'
+      preLoaderRoute: typeof FreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/selfhost': {
       id: '/selfhost'
       path: '/selfhost'
@@ -181,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/api/catalog'
       fullPath: '/api/catalog'
       preLoaderRoute: typeof ApiCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/free-token': {
+      id: '/api/free-token'
+      path: '/api/free-token'
+      fullPath: '/api/free-token'
+      preLoaderRoute: typeof ApiFreeTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -237,8 +277,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FreeRoute: FreeRoute,
   SelfhostRoute: SelfhostRoute,
   ApiCatalogRoute: ApiCatalogRoute,
+  ApiFreeTokenRoute: ApiFreeTokenRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiInterruptRoute: ApiInterruptRoute,
   ApiOfferRoute: ApiOfferRoute,
