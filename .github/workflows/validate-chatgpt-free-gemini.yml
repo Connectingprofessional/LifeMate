@@ -40,18 +40,54 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
-          expire_time="$(date -u -d '+30 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
-          new_session_expire_time="$(date -u -d '+60 seconds' '+%Y-%m-%dT%H:%M:%SZ')"
-          response="$(curl -sS -w '\n%{http_code}'             -X POST             -H 'content-type: application/json'             -H "x-goog-api-key: $GEMINI_API_KEY"             --data "{\"uses\":1,\"expireTime\":\"$expire_time\",\"newSessionExpireTime\":\"$new_session_expire_time\"}"             https://generativelanguage.googleapis.com/v1beta/auth_tokens)"
-          status="${response##*$'\n'}"
-          body="${response%$'\n'*}"
-          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
-            echo "Gemini auth-token request failed with HTTP $status."
-            echo "$body" | python -c 'import json,sys; d=json.load(sys.stdin); print(d.get("error",{}).get("message","Gemini request failed."))' 2>/dev/null || true
-            exit 1
-          fi
-          echo "$body" | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("name") else 1)'
-          echo "Gemini Live auth-token endpoint accepted the configured key."
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+          from datetime import datetime, timedelta, timezone
+
+          api_key = os.environ["GEMINI_API_KEY"].strip()
+          now = datetime.now(timezone.utc)
+          payload = {
+              "uses": 1,
+              "expireTime": (now + timedelta(minutes=30)).isoformat().replace("+00:00", "Z"),
+              "newSessionExpireTime": (now + timedelta(seconds=60)).isoformat().replace("+00:00", "Z"),
+          }
+
+          request = urllib.request.Request(
+              "https://generativelanguage.googleapis.com/v1beta/auth_tokens",
+              data=json.dumps(payload).encode("utf-8"),
+              method="POST",
+              headers={
+                  "content-type": "application/json",
+                  "x-goog-api-key": api_key,
+              },
+          )
+
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  status = response.status
+                  body = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as error:
+              body = json.loads(error.read().decode("utf-8"))
+              print(f"Gemini auth-token request failed with HTTP {error.code}.")
+              print(body.get("error", {}).get("message", "Gemini request failed."))
+              sys.exit(1)
+          except Exception as error:
+              print(f"Gemini auth-token request failed: {error}")
+              sys.exit(1)
+
+          if not 200 <= status < 300 or not body.get("name"):
+              print(f"Gemini auth-token request failed with HTTP {status}.")
+              print(body.get("error", {}).get("message", "Gemini did not issue an ephemeral token."))
+              sys.exit(1)
+
+          print("Gemini Live auth-token endpoint accepted the configured key.")
+
+          # Do not print the issued token.
+          PY
 
       - name: Build
         run: npm run build
