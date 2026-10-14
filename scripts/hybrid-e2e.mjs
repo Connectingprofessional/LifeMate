@@ -71,7 +71,7 @@ try {
   endEnabled = await endBtn.isEnabled();
   step("after greeting", { callStillLive: endEnabled, status: await page.locator("p.min-h-5").innerText() });
   if (endEnabled) {
-    await endBtn.click();
+    await endBtn.evaluate((el) => el.click());
     await page.waitForTimeout(1000);
     step("ended", { status: await page.locator("p.min-h-5").innerText() });
   }
