@@ -108,45 +108,46 @@ export async function startLiveCall(token: TokenReply, hooks: LiveHooks): Promis
   };
 
   const ai = new GoogleGenAI({ apiKey: token.token, httpOptions: { apiVersion: "v1beta" } });
+  let opened!: () => void;
+  let failed!: (e: Error) => void;
   const ready = new Promise<void>((resolve, reject) => {
-    ai.live
-      .connect({
-        model: token.model,
-        config: { responseModalities: [Modality.AUDIO] },
-        callbacks: {
-          onopen: () => resolve(),
-          onmessage: (m: LiveServerMessage) => {
-            const sc = m.serverContent;
-            if (sc?.interrupted) hooks.onInterrupted();
-            for (const part of sc?.modelTurn?.parts ?? []) {
-              const data = part.inlineData?.data;
-              if (data) hooks.onAudio(b64ToBytes(data));
-            }
-            if (sc?.inputTranscription?.text) {
-              youText += sc.inputTranscription.text;
-              hooks.onCaption("you", youText);
-            }
-            if (sc?.outputTranscription?.text) {
-              if (youText) youText = "";
-              avatarText += sc.outputTranscription.text;
-              hooks.onCaption("avatar", avatarText);
-            }
-            if (sc?.turnComplete) {
-              avatarText = "";
-              hooks.onTurnComplete();
-            }
-          },
-          onerror: (e: ErrorEvent) => {
-            reject(new Error(e.message || "Connection error"));
-            shutdown(e.message || "The connection failed.");
-          },
-          onclose: (e: CloseEvent) => shutdown(e.reason || "The call ended."),
-        },
-      })
-      .then((s) => {
-        session = s;
-      })
-      .catch(reject);
+    opened = resolve;
+    failed = reject;
+  });
+  // Keep the connect() promise itself: `session` must be set before the greeting
+  // and the microphone are used (onopen can fire before connect() resolves).
+  session = await ai.live.connect({
+    model: token.model,
+    config: { responseModalities: [Modality.AUDIO] },
+    callbacks: {
+      onopen: () => opened(),
+      onmessage: (m: LiveServerMessage) => {
+        const sc = m.serverContent;
+        if (sc?.interrupted) hooks.onInterrupted();
+        for (const part of sc?.modelTurn?.parts ?? []) {
+          const data = part.inlineData?.data;
+          if (data) hooks.onAudio(b64ToBytes(data));
+        }
+        if (sc?.inputTranscription?.text) {
+          youText += sc.inputTranscription.text;
+          hooks.onCaption("you", youText);
+        }
+        if (sc?.outputTranscription?.text) {
+          if (youText) youText = "";
+          avatarText += sc.outputTranscription.text;
+          hooks.onCaption("avatar", avatarText);
+        }
+        if (sc?.turnComplete) {
+          avatarText = "";
+          hooks.onTurnComplete();
+        }
+      },
+      onerror: (e: ErrorEvent) => {
+        failed(new Error(e.message || "Connection error"));
+        shutdown(e.message || "The connection failed.");
+      },
+      onclose: (e: CloseEvent) => shutdown(e.reason || "The call ended."),
+    },
   });
   await ready;
 
