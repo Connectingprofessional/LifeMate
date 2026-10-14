@@ -43,13 +43,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -d ".output/public" ]; then
+          if [ -d ".vercel/output/static" ]; then
+            echo "PAGES_OUTPUT=.vercel/output/static" >> "$GITHUB_ENV"
+          elif [ -d ".output/public" ]; then
             echo "PAGES_OUTPUT=.output/public" >> "$GITHUB_ENV"
           elif [ -d "dist" ]; then
             echo "PAGES_OUTPUT=dist" >> "$GITHUB_ENV"
           else
             echo "No static output directory was produced."
-            find . -maxdepth 3 -type d \( -name public -o -name dist \) -print
+            find . -maxdepth 4 -type d \( -name static -o -name public -o -name dist \) -print
             exit 1
           fi
 
