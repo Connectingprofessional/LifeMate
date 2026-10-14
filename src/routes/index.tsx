@@ -3,6 +3,9 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Mic, MicOff, PhoneOff, Sparkles, UserRound, Video } from "lucide-react";
 import type { Avatar, Voice } from "@/lib/liveavatar";
 import { listCatalog, startSession, stopSession } from "@/lib/liveavatar";
+import { VOICES as FREE_VOICES } from "@/lib/free/catalog";
+import type { AvatarStage } from "@/lib/free/avatar";
+import type { LiveCall } from "@/lib/free/live";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -50,6 +53,10 @@ function Home() {
   const roomRef = useRef<{ disconnect: () => void } | null>(null);
   const sidRef = useRef("");
   const videoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Free fallback call (Gemini voice + in-browser 3D avatar), used only when HeyGen cannot connect.
+  const freeStageRef = useRef<HTMLDivElement>(null);
+  const freeAvatarRef = useRef<AvatarStage | null>(null);
+  const freeCallRef = useRef<LiveCall | null>(null);
 
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
@@ -64,6 +71,7 @@ function Home() {
   const [live, setLive] = useState(false);
   const [hasVideo, setHasVideo] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [freeMode, setFreeMode] = useState(false);
 
   const selected = avatars.find((a) => a.id === avatarId);
 
@@ -107,6 +115,56 @@ function Home() {
     }
   }
 
+  function stopFree() {
+    freeCallRef.current?.close();
+    freeCallRef.current = null;
+    freeAvatarRef.current?.destroy();
+    freeAvatarRef.current = null;
+    setFreeMode(false);
+  }
+
+  // Free fallback: same page, same controls, but Gemini speaks and a 3D avatar is drawn in the browser.
+  async function startFree(reason: string) {
+    const stage = freeStageRef.current;
+    if (!stage) throw new Error(reason);
+    const langName = LANGS.find((l) => l.value === lang)?.label || "English";
+    const heygenVoice = voices.find((v) => v.id === (voiceId || selected?.default_voice?.id));
+    const wantGender = (gender || heygenVoice?.gender || "female").toLowerCase();
+    const voice = (FREE_VOICES.find((v) => v.gender === wantGender) ?? FREE_VOICES[0]).id;
+    setStatus("HeyGen is not available right now. Switching to the free call…");
+    const res = await fetch("/api/free-token", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ language: lang, languageName: langName, voice, topic }),
+    });
+    const tok = (await res.json()) as { token?: string; model?: string; error?: string };
+    if (!res.ok || !tok.token || !tok.model) {
+      throw new Error(`${reason} The free call could not start either: ${tok.error || "no token"}`);
+    }
+    const catalog = (await fetch("/avatars/catalog.json").then((r) => r.json())) as import("@/lib/free/catalog").FreeAvatar[];
+    const pick = catalog.find((a) => (a.body === "M") === (wantGender === "male")) ?? catalog[0];
+    setFreeMode(true);
+    const { createAvatarStage } = await import("@/lib/free/avatar");
+    const avatarStage = await createAvatarStage(stage, pick, { onSpeaking: () => undefined });
+    freeAvatarRef.current = avatarStage;
+    const { startLiveCall } = await import("@/lib/free/live");
+    const call = await startLiveCall(
+      { token: tok.token, model: tok.model },
+      {
+        onAudio: (pcm) => avatarStage.speak(pcm),
+        onTurnComplete: () => avatarStage.endOfReply(),
+        onInterrupted: () => avatarStage.interrupt(),
+        onCaption: () => undefined,
+        onClose: (why) => {
+          if (freeCallRef.current) void end(true, why);
+        },
+      },
+    );
+    freeCallRef.current = call;
+    setLive(true);
+    setStatus("Free call (Gemini). Speak naturally. The avatar listens and answers.");
+  }
+
   // `message` lets the caller say why the call ended; without it the status
   // would be overwritten with a generic "Ended." and the real error lost.
   async function end(auto = false, message?: string) {
@@ -119,6 +177,7 @@ function Home() {
       /* already gone */
     }
     cleanupAudio();
+    stopFree();
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -138,15 +197,22 @@ function Home() {
       if (!avatarId) throw new Error("Pick an avatar first. Load the list if it is empty.");
       const langName = LANGS.find((l) => l.value === lang)?.label || "English";
       const fallbackVoice = selected?.default_voice?.id || "";
-      const session = await startSession({
-        data: {
-          language: lang,
-          language_name: langName,
-          avatar_id: avatarId,
-          voice_id: voiceId || fallbackVoice || undefined,
-          topic,
-        },
-      });
+      let session: Awaited<ReturnType<typeof startSession>>;
+      try {
+        session = await startSession({
+          data: {
+            language: lang,
+            language_name: langName,
+            avatar_id: avatarId,
+            voice_id: voiceId || fallbackVoice || undefined,
+            topic,
+          },
+        });
+      } catch (heygenError) {
+        const why = heygenError instanceof Error ? heygenError.message : "HeyGen could not start the call.";
+        await startFree(why);
+        return;
+      }
       const { Room, RoomEvent, Track } = await import("livekit-client");
       const room = new Room({ adaptiveStream: true });
       roomRef.current = room;
@@ -180,10 +246,18 @@ function Home() {
       setStatus("Connected. Waiting for the avatar’s video… then just talk.");
       // If the avatar never publishes video, say so instead of waiting forever.
       videoTimerRef.current = setTimeout(() => {
-        void end(
-          false,
-          "Connected, but the avatar's video never arrived. Check the LiveAvatar account (credits, plan) and try again.",
-        );
+        const why = "Connected, but the avatar's video never arrived. Check the LiveAvatar account (credits, plan) and try again.";
+        // Drop the HeyGen room, then try the free call before giving up.
+        void end(false, why).then(async () => {
+          setBusy("start");
+          try {
+            await startFree(why);
+          } catch (e) {
+            await end(false, e instanceof Error ? e.message : why);
+          } finally {
+            setBusy(null);
+          }
+        });
       }, 25000);
       // Audio playback and the microphone are best-effort: the avatar's video
       // should still show if the browser blocks either one.
@@ -208,6 +282,12 @@ function Home() {
   }
 
   async function toggleMute() {
+    if (freeCallRef.current) {
+      const next = !muted;
+      freeCallRef.current.setMuted(next);
+      setMuted(next);
+      return;
+    }
     const room = roomRef.current as { localParticipant?: { setMicrophoneEnabled: (on: boolean) => Promise<void> } } | null;
     if (!room?.localParticipant) return;
     const next = !muted;
@@ -231,7 +311,8 @@ function Home() {
         <section className="overflow-hidden rounded-2xl border border-border bg-surface">
           <div className="relative aspect-square w-full bg-surface-2">
             <video ref={videoRef} autoPlay playsInline className={`absolute inset-0 h-full w-full object-cover ${hasVideo ? "block" : "hidden"}`} />
-            {!hasVideo && (
+            <div ref={freeStageRef} className={`absolute inset-0 ${freeMode ? "block" : "hidden"}`} />
+            {!hasVideo && !freeMode && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center">
                 {selected?.preview_url ? (
                   <img

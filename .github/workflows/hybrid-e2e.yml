@@ -1,0 +1,50 @@
+name: Hybrid fallback end-to-end
+
+on:
+  push:
+    branches: [hybrid-fallback]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    environment: chatgpt-free-gemini
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Install browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Start the app
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LIVEAVATAR_API_KEY: ${{ secrets.LIVEAVATAR_API_KEY }}
+        run: |
+          nohup npm run dev > dev.log 2>&1 &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8080/ >/dev/null && break; sleep 2; done
+      - name: Run the end-to-end test
+        id: e2e
+        continue-on-error: true
+        run: node scripts/hybrid-e2e.mjs
+      - name: Publish results to a results branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          tail -n 60 dev.log > ci-results/dev-log-tail.txt || true
+          git checkout --orphan hybrid-fallback-results
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f ci-results
+          git commit -m "E2E results for ${GITHUB_SHA}" 
+          git push -f origin hybrid-fallback-results
+      - name: Fail if the test failed
+        if: steps.e2e.outcome == 'failure'
+        run: exit 1
